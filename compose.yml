@@ -1,0 +1,67 @@
+volumes:
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+
+services:
+  app:
+    build: .
+    container_name: app
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./car_price/etc/prometheus:/config
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/config/prometheus.yml'
+      - '--storage.tsdb.retention.time=15d'
+
+  node_exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    restart: unless-stopped
+    volumes:
+      - '/:/host:ro,rslave'
+
+  cadvisor:
+    image: google/cadvisor:latest
+    container_name: cadvisor
+
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    devices:
+      - /dev/kmsg
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # Replace with your desired password
+      - GF_USERS_ALLOW_SIGN_UP=false
+
+  
